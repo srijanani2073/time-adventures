@@ -19,6 +19,26 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Time Adventures API is running',
+    endpoints: {
+      health: '/api/health',
+      login: 'POST /api/users/login',
+      stories: 'GET /api/stories',
+      progress: 'GET /api/progress/:userId',
+      stats: 'GET /api/progress/:userId/stats',
+      updateProgress: 'POST /api/progress'
+    }
+  });
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Time Adventures API is running' });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Time Adventures API is running' });
