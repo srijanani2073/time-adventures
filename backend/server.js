@@ -8,8 +8,14 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
+  origin: [
+    'https://time-adventures.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
@@ -19,6 +25,7 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
+// Root endpoint
 app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -32,11 +39,6 @@ app.get('/', (req, res) => {
       updateProgress: 'POST /api/progress'
     }
   });
-});
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Time Adventures API is running' });
 });
 
 // Health check endpoint
