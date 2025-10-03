@@ -4,7 +4,6 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
@@ -19,12 +18,14 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-// Health check endpoint
+// ================== ROUTES ==================
+
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Time Adventures API is running' });
 });
 
-// User Routes
+// User login
 app.post('/api/users/login', async (req, res) => {
   try {
     const { username, email } = req.body;
@@ -33,7 +34,6 @@ app.post('/api/users/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and email are required' });
     }
 
-    // Check if user exists
     const { data: existingUser, error: fetchError } = await supabase
       .from('users')
       .select('*')
@@ -43,22 +43,19 @@ app.post('/api/users/login', async (req, res) => {
     let user;
 
     if (fetchError && fetchError.code === 'PGRST116') {
-      // User doesn't exist, create new user
+      // Create user if not found
       const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert([{ username, email }])
         .select()
         .single();
 
-      if (insertError) {
-        throw insertError;
-      }
-
+      if (insertError) throw insertError;
       user = newUser;
     } else if (fetchError) {
       throw fetchError;
     } else {
-      // User exists, update username if different
+      // Update username if changed
       if (existingUser.username !== username) {
         const { data: updatedUser, error: updateError } = await supabase
           .from('users')
@@ -67,25 +64,20 @@ app.post('/api/users/login', async (req, res) => {
           .select()
           .single();
 
-        if (updateError) {
-          throw updateError;
-        }
-
+        if (updateError) throw updateError;
         user = updatedUser;
       } else {
         user = existingUser;
       }
     }
 
-    // Get user stats
+    // Get stats
     const { data: progressData, error: progressError } = await supabase
       .from('user_progress')
       .select('stars_earned, completed')
       .eq('user_id', user.id);
 
-    if (progressError) {
-      throw progressError;
-    }
+    if (progressError) throw progressError;
 
     const total_stars = progressData.reduce((sum, p) => sum + (p.stars_earned || 0), 0);
     const stories_completed = progressData.filter(p => p.completed).length;
@@ -96,10 +88,7 @@ app.post('/api/users/login', async (req, res) => {
         username: user.username,
         email: user.email
       },
-      stats: {
-        total_stars,
-        stories_completed
-      }
+      stats: { total_stars, stories_completed }
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -107,7 +96,7 @@ app.post('/api/users/login', async (req, res) => {
   }
 });
 
-// Stories Routes
+// Stories
 app.get('/api/stories', async (req, res) => {
   try {
     const { data: stories, error } = await supabase
@@ -115,9 +104,7 @@ app.get('/api/stories', async (req, res) => {
       .select('*')
       .order('story_id', { ascending: true });
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     res.json({ stories });
   } catch (error) {
@@ -126,7 +113,7 @@ app.get('/api/stories', async (req, res) => {
   }
 });
 
-// Progress Routes
+// Progress
 app.get('/api/progress/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -136,9 +123,7 @@ app.get('/api/progress/:userId', async (req, res) => {
       .select('*')
       .eq('user_id', userId);
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     res.json(progress || []);
   } catch (error) {
@@ -156,17 +141,12 @@ app.get('/api/progress/:userId/stats', async (req, res) => {
       .select('stars_earned, completed')
       .eq('user_id', userId);
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     const total_stars = progress.reduce((sum, p) => sum + (p.stars_earned || 0), 0);
     const stories_completed = progress.filter(p => p.completed).length;
 
-    res.json({
-      total_stars,
-      stories_completed
-    });
+    res.json({ total_stars, stories_completed });
   } catch (error) {
     console.error('Fetch stats error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -177,7 +157,6 @@ app.post('/api/progress', async (req, res) => {
   try {
     const { userId, storyId, currentStep, starsEarned, completed, attempts } = req.body;
 
-    // Check if progress exists
     const { data: existingProgress, error: fetchError } = await supabase
       .from('user_progress')
       .select('*')
@@ -188,7 +167,7 @@ app.post('/api/progress', async (req, res) => {
     let progress;
 
     if (fetchError && fetchError.code === 'PGRST116') {
-      // Progress doesn't exist, create new
+      // Insert
       const { data: newProgress, error: insertError } = await supabase
         .from('user_progress')
         .insert([{
@@ -196,28 +175,25 @@ app.post('/api/progress', async (req, res) => {
           story_id: storyId,
           current_step: currentStep,
           stars_earned: starsEarned,
-          completed: completed,
-          attempts: attempts
+          completed,
+          attempts
         }])
         .select()
         .single();
 
-      if (insertError) {
-        throw insertError;
-      }
-
+      if (insertError) throw insertError;
       progress = newProgress;
     } else if (fetchError) {
       throw fetchError;
     } else {
-      // Progress exists, update it
+      // Update
       const { data: updatedProgress, error: updateError } = await supabase
         .from('user_progress')
         .update({
           current_step: currentStep,
           stars_earned: starsEarned,
-          completed: completed,
-          attempts: attempts,
+          completed,
+          attempts,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', userId)
@@ -225,10 +201,7 @@ app.post('/api/progress', async (req, res) => {
         .select()
         .single();
 
-      if (updateError) {
-        throw updateError;
-      }
-
+      if (updateError) throw updateError;
       progress = updatedProgress;
     }
 
@@ -239,6 +212,5 @@ app.post('/api/progress', async (req, res) => {
   }
 });
 
-//app.listen(PORT, () => {
-//  console.log(`Server is running on port ${PORT}`);
-//});
+// Export for Vercel (no app.listen here!)
+module.exports = app;
