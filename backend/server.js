@@ -153,67 +153,61 @@ app.get("/api/progress/:userId/stats", async (req, res) => {
 
 app.post("/api/progress", async (req, res) => {
   try {
-    const { userId, storyId, stepIndex, answer, isCorrect, starsEarned, completed } = req.body;
+    console.log("Progress POST body:", req.body); // <--- log incoming data
+    const { userId, storyId, currentStep, starsEarned, completed, attempts } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ error: "Missing userId" });
+    // check that required fields exist
+    if (!userId || !storyId) {
+      return res.status(400).json({ error: "Missing userId or storyId" });
     }
 
-    // Prepare the new attempt
-    const newAttempt = {
-      step: stepIndex,
-      answer,
-      correct: isCorrect,
-      timestamp: new Date().toISOString()
-    };
-
-    // Fetch existing attempts (if any)
     const { data: existingProgress, error: fetchError } = await supabase
       .from("user_progress")
-      .select("attempts")
+      .select("*")
       .eq("user_id", userId)
       .eq("story_id", storyId)
       .single();
 
-    if (fetchError && fetchError.code !== "PGRST116") {
-      // If error is not "row not found", throw it
+    console.log("Existing progress:", existingProgress, "Fetch error:", fetchError);
+
+    let progress;
+
+    if (fetchError && fetchError.code === "PGRST116") {
+      const { data: newProgress, error: insertError } = await supabase
+        .from("user_progress")
+        .insert([{ user_id: userId, story_id: storyId, current_step: currentStep, stars_earned: starsEarned, completed, attempts }])
+        .select()
+        .single();
+      if (insertError) throw insertError;
+      progress = newProgress;
+    } else if (fetchError) {
       throw fetchError;
-    }
-
-    const attemptsArray = existingProgress?.attempts || [];
-    attemptsArray.push(newAttempt);
-
-    // Upsert progress (insert if new, update if exists)
-    const { data, error: upsertError } = await supabase
-      .from("user_progress")
-      .upsert(
-        {
-          user_id: userId,
-          story_id: storyId,
-          current_step: stepIndex,
+    } else {
+      const { data: updatedProgress, error: updateError } = await supabase
+        .from("user_progress")
+        .update({
+          current_step: currentStep,
           stars_earned: starsEarned,
           completed,
-          attempts: attemptsArray,
-          updated_at: new Date().toISOString()
-        },
-        {
-          onConflict: ["user_id", "story_id"] // use the unique constraint
-        }
-      )
-      .select()
-      .single();
-
-    if (upsertError) {
-      console.error("Supabase upsert error:", JSON.stringify(upsertError, null, 2));
-      return res.status(500).json({ error: "Failed to update progress" });
+          attempts,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("story_id", storyId)
+        .select()
+        .single();
+      if (updateError) throw updateError;
+      progress = updatedProgress;
     }
 
-    res.json({ progress: data });
-  }  catch (error) {
-    console.error("Update progress error full:", JSON.stringify(error, null, 2));
-    res.status(500).json({ error: "Internal server error", details: error.message });
+    console.log("Progress saved:", progress);
+    res.json({ progress });
+  } catch (error) {
+    console.error("Update progress error:", error); // <--- log the full error
+    res.status(500).json({ error: "Failed to update progress", details: error.message });
   }
 });
+
 
 if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
