@@ -42,7 +42,6 @@ const StoryPage = ({
     const completed = isCorrect && currentStep === selectedStory.steps.length - 1;
 
     // Save progress to backend
-   // Save progress to backend
 if (!user?.id) {
   console.warn("No userId available — skipping progress save");
 } else {
@@ -51,13 +50,12 @@ if (!user?.id) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId: user.id,
+        userId: user.id,             // must exist in users table
         storyId: selectedStory.storyId,
-        stepIndex: currentStep,
-        answer: userAnswer,
-        isCorrect,
+        currentStep: currentStep,    // matches DB column
         starsEarned: isCorrect ? 1 : 0,
-        completed
+        completed,
+        attempts: []                 // start with empty array or append previous attempts
       })
     });
 
@@ -69,6 +67,7 @@ if (!user?.id) {
     console.error('Failed to save progress:', err);
   }
 }
+
 
 
     // Move to next step if correct
