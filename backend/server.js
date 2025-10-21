@@ -6,9 +6,8 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ✅ Proper CORS setup for Vercel frontend
 app.use(cors({
-  origin: ["https://time-adventures.vercel.app"], // frontend domain
+  origin: ["https://time-adventures.vercel.app"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
 }));
@@ -21,7 +20,7 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-// Root endpoint
+
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
@@ -37,7 +36,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// Health check endpoint
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "Time Adventures API is running" });
 });
@@ -200,10 +199,8 @@ app.post("/api/progress", async (req, res) => {
   }
 });
 
-// ✅ Local dev
 if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
-// ✅ Export for Vercel
 module.exports = app;
