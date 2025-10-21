@@ -4,7 +4,6 @@ const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 
-// Middleware
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
   credentials: true
@@ -19,7 +18,6 @@ const supabase = createClient(
 
 // ----------------- ROUTES -----------------
 
-// Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Time Adventures API is running' });
 });
