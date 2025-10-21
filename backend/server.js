@@ -209,9 +209,9 @@ app.post("/api/progress", async (req, res) => {
     }
 
     res.json({ progress: data });
-  } catch (error) {
-    console.error("Update progress error:", JSON.stringify(error, null, 2));
-    res.status(500).json({ error: "Internal server error" });
+  }  catch (error) {
+    console.error("Update progress error full:", JSON.stringify(error, null, 2));
+    res.status(500).json({ error: "Internal server error", details: error.message });
   }
 });
 
