@@ -1,3 +1,15 @@
+import cors from "cors";
+import express from "express";
+
+const app = express();
+
+app.use(cors({
+  origin: ["https://time-adventures.vercel.app"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+}));
+
+app.use(express.json());
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
