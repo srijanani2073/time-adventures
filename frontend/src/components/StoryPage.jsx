@@ -42,23 +42,34 @@ const StoryPage = ({
     const completed = isCorrect && currentStep === selectedStory.steps.length - 1;
 
     // Save progress to backend
-    try {
-      await fetch('/api/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          storyId: selectedStory.storyId,
-          stepIndex: currentStep,
-          answer: userAnswer,
-          isCorrect,
-          starsEarned: isCorrect ? 1 : 0,
-          completed
-        })
-      });
-    } catch (err) {
-      console.error('Failed to save progress:', err);
+   // Save progress to backend
+if (!user?.id) {
+  console.warn("No userId available — skipping progress save");
+} else {
+  try {
+    const response = await fetch('/api/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        storyId: selectedStory.storyId,
+        stepIndex: currentStep,
+        answer: userAnswer,
+        isCorrect,
+        starsEarned: isCorrect ? 1 : 0,
+        completed
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      console.error("Error saving progress:", err);
     }
+  } catch (err) {
+    console.error('Failed to save progress:', err);
+  }
+}
+
 
     // Move to next step if correct
     if (isCorrect && !completed) {
