@@ -1,9 +1,7 @@
-// API service for backend communication
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 VITE_API_URL = https://time-adventures-backend.vercel.app/api
 
 const api = {
-  // User APIs
   userAPI: {
     login: async (username, email) => {
       const response = await fetch(`${API_URL}users/login`, {
