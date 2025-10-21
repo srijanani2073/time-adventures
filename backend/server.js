@@ -155,24 +155,36 @@ app.post("/api/progress", async (req, res) => {
   try {
     const { userId, storyId, stepIndex, answer, isCorrect, starsEarned, completed } = req.body;
 
-    // 1️⃣ Fetch existing attempts
-    const { data: existing } = await supabase
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    // Prepare the new attempt
+    const newAttempt = {
+      step: stepIndex,
+      answer,
+      correct: isCorrect,
+      timestamp: new Date().toISOString()
+    };
+
+    // Fetch existing attempts (if any)
+    const { data: existingProgress, error: fetchError } = await supabase
       .from("user_progress")
       .select("attempts")
       .eq("user_id", userId)
       .eq("story_id", storyId)
       .single();
 
-    const attemptsArray = existing?.attempts || [];
-    attemptsArray.push({
-      step: stepIndex,
-      answer,
-      correct: isCorrect,
-      timestamp: new Date().toISOString()
-    });
+    if (fetchError && fetchError.code !== "PGRST116") {
+      // If error is not "row not found", throw it
+      throw fetchError;
+    }
 
-    // 2️⃣ Upsert progress
-    const { data, error } = await supabase
+    const attemptsArray = existingProgress?.attempts || [];
+    attemptsArray.push(newAttempt);
+
+    // Upsert progress (insert if new, update if exists)
+    const { data, error: upsertError } = await supabase
       .from("user_progress")
       .upsert(
         {
@@ -184,14 +196,21 @@ app.post("/api/progress", async (req, res) => {
           attempts: attemptsArray,
           updated_at: new Date().toISOString()
         },
-        { onConflict: ["user_id", "story_id"] }
-      );
+        {
+          onConflict: ["user_id", "story_id"] // use the unique constraint
+        }
+      )
+      .select()
+      .single();
 
-    if (error) throw error;
+    if (upsertError) {
+      console.error("Supabase upsert error:", JSON.stringify(upsertError, null, 2));
+      return res.status(500).json({ error: "Failed to update progress" });
+    }
 
-    res.json({ success: true, progress: data[0] });
+    res.json({ progress: data });
   } catch (error) {
-    console.error("Update progress error:", error);
+    console.error("Update progress error:", JSON.stringify(error, null, 2));
     res.status(500).json({ error: "Internal server error" });
   }
 });
