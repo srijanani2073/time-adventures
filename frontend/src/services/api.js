@@ -1,11 +1,12 @@
 // API service for backend communication
-const API_URL = 'https://time-adventures-backend.vercel.app/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+VITE_API_URL = https://time-adventures-backend.vercel.app/api
 
 const api = {
   // User APIs
   userAPI: {
     login: async (username, email) => {
-      const response = await fetch(`${API_URL}/users/login`, {
+      const response = await fetch(`${API_URL}users/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -24,7 +25,7 @@ const api = {
   // Stories APIs
   storiesAPI: {
     getAllStories: async () => {
-      const response = await fetch(`${API_URL}/stories`);
+      const response = await fetch(`${API_URL}stories`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch stories');
@@ -37,7 +38,7 @@ const api = {
   // Progress APIs
   progressAPI: {
     getUserProgress: async (userId) => {
-      const response = await fetch(`${API_URL}/progress/${userId}`);
+      const response = await fetch(`${API_URL}progress/${userId}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch progress');
@@ -47,7 +48,7 @@ const api = {
     },
 
     updateProgress: async (data) => {
-      const response = await fetch(`${API_URL}/progress`, {
+      const response = await fetch(`${API_URL}progress`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,7 +64,7 @@ const api = {
     },
 
     getUserStats: async (userId) => {
-      const response = await fetch(`${API_URL}/progress/${userId}/stats`);
+      const response = await fetch(`${API_URL}progress/${userId}stats`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch stats');
