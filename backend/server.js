@@ -153,46 +153,43 @@ app.get("/api/progress/:userId/stats", async (req, res) => {
 
 app.post("/api/progress", async (req, res) => {
   try {
-    const { userId, storyId, currentStep, starsEarned, completed, attempts } = req.body;
+    const { userId, storyId, stepIndex, answer, isCorrect, starsEarned, completed } = req.body;
 
-    const { data: existingProgress, error: fetchError } = await supabase
+    // 1️⃣ Fetch existing attempts
+    const { data: existing } = await supabase
       .from("user_progress")
-      .select("*")
+      .select("attempts")
       .eq("user_id", userId)
       .eq("story_id", storyId)
       .single();
 
-    let progress;
+    const attemptsArray = existing?.attempts || [];
+    attemptsArray.push({
+      step: stepIndex,
+      answer,
+      correct: isCorrect,
+      timestamp: new Date().toISOString()
+    });
 
-    if (fetchError && fetchError.code === "PGRST116") {
-      const { data: newProgress, error: insertError } = await supabase
-        .from("user_progress")
-        .insert([{ user_id: userId, story_id: storyId, current_step: currentStep, stars_earned: starsEarned, completed, attempts }])
-        .select()
-        .single();
-      if (insertError) throw insertError;
-      progress = newProgress;
-    } else if (fetchError) {
-      throw fetchError;
-    } else {
-      const { data: updatedProgress, error: updateError } = await supabase
-        .from("user_progress")
-        .update({
-          current_step: currentStep,
+    // 2️⃣ Upsert progress
+    const { data, error } = await supabase
+      .from("user_progress")
+      .upsert(
+        {
+          user_id: userId,
+          story_id: storyId,
+          current_step: stepIndex,
           stars_earned: starsEarned,
           completed,
-          attempts,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId)
-        .eq("story_id", storyId)
-        .select()
-        .single();
-      if (updateError) throw updateError;
-      progress = updatedProgress;
-    }
+          attempts: attemptsArray,
+          updated_at: new Date().toISOString()
+        },
+        { onConflict: ["user_id", "story_id"] }
+      );
 
-    res.json({ progress });
+    if (error) throw error;
+
+    res.json({ success: true, progress: data[0] });
   } catch (error) {
     console.error("Update progress error:", error);
     res.status(500).json({ error: "Internal server error" });
